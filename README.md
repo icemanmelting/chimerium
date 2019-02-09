@@ -14,13 +14,13 @@ To create a new method handler or Controller, it is just a matter of extending a
 
         @GET(route = "/users/:id/:age", args = {String.class, Integer.class}, description = "")
         public Response get(String id, Integer v) {
-
+            User user1 = new User("Fabio", "Francisco");
             return new Response(200, user1);
         }
 
         @POST(route = "/users/:id", args = String.class, description = "", bodyType = User.class)
         public Response post(String id) {
-            System.out.println(getRequest().get());
+            User user2 = new User("Carlos", "Monteiro");
             return new Response(200, user2);
         }
     }
