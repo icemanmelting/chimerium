@@ -10,7 +10,7 @@ import java.lang.annotation.Target;
 public @interface PUT {
     String route();
 
-    Class<?>[] args();
+    Class<?>[] args() default {};
 
     Class<?> bodyType() default Object.class;
 

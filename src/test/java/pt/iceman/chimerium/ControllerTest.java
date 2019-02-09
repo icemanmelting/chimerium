@@ -16,6 +16,8 @@ import pt.iceman.chimerium.server.SunServer;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Hashtable;
 
 import static org.junit.Assert.assertEquals;
 
@@ -33,7 +35,7 @@ public class ControllerTest {
     public ControllerTest() throws IOException {
     }
 
-    private class User extends Model {
+    private class User {
         private String name;
         private String lastName;
 
@@ -59,7 +61,7 @@ public class ControllerTest {
         }
     }
 
-    private class UsersController extends Controller<User> {
+    private class UsersController extends Controller {
         public UsersController(String context) {
             super(context);
         }
@@ -123,6 +125,7 @@ public class ControllerTest {
     }
 
     @Test
+    @SuppressWarnings("unchecked")
     public void testRouteNotImplemented() throws IOException {
         HttpUriRequest request = new HttpDelete("http://localhost:" + port + "/users/whatever");
 
@@ -133,9 +136,9 @@ public class ControllerTest {
         assertEquals(404, statusCode);
 
         String body = IOUtils.toString(response.getEntity().getContent(), "UTF-8");
-        Model model = gson.fromJson(body, Model.class);
+        HashMap<String, String> respbody = gson.fromJson(body, HashMap.class);
 
-        assertEquals("No Route Found", model.getApiMessage());
+        assertEquals("No Route Found", respbody.get("apiMessage"));
     }
 
 

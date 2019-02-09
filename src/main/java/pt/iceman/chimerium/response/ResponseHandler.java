@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.AbstractCollection;
+import java.util.AbstractMap;
 import java.util.List;
 import java.util.Map;
 import java.util.logging.Level;
@@ -31,7 +32,7 @@ public class ResponseHandler {
 
         Class<?> baseType = getRootClass(result.getClass());
 
-        String body = (baseType.isAssignableFrom(AbstractCollection.class)) ? gson.toJson(result, baseType) : gson.toJson(result).toString();
+        String body = (baseType.isAssignableFrom(AbstractCollection.class) || baseType.isAssignableFrom(AbstractMap.class)) ? gson.toJson(result, baseType) : gson.toJson(result).toString();
 
         List<String> origins = httpExchange.getRequestHeaders().get("Origin");
 

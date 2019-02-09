@@ -10,7 +10,7 @@ import java.lang.annotation.Target;
 public @interface GET {
     String route();
 
-    Class<?>[] args();
+    Class<?>[] args() default {};
 
     String description();
 }

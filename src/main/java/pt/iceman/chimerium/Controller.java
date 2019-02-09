@@ -25,7 +25,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
-public abstract class Controller<T extends Model> implements HttpHandler {
+public abstract class Controller implements HttpHandler {
     private static final String POST_METHOD = "POST";
     private static final String PUT_METHOD = "PUT";
     private static final String GET_METHOD = "GET";
@@ -35,7 +35,6 @@ public abstract class Controller<T extends Model> implements HttpHandler {
     private static final Gson gson = new Gson();
 
     @SuppressWarnings("unchecked")
-    private final Class<T> thisClass = (Class<T>) ((ParameterizedType) getClass().getGenericSuperclass()).getActualTypeArguments()[0];
     private final ResponseHandler responseHandler;
 
     private String context;
@@ -98,21 +97,8 @@ public abstract class Controller<T extends Model> implements HttpHandler {
     }
 
     @SuppressWarnings("unchecked")
-    private T buildDefaultModel(String message) {
-        Constructor[] declaredConstructors = ((Class<T>) thisClass).getSuperclass().getDeclaredConstructors();
-
-        Constructor ctor = Arrays.stream(declaredConstructors)
-                                 .filter(c -> (c.getParameterTypes().length == 1) && (c.getParameterTypes()[0].equals(String.class)))
-                                 .collect(Collectors.toList()).get(0);
-
-        try {
-            ctor.setAccessible(true);
-            return (T) ctor.newInstance(message);
-        } catch (InstantiationException | IllegalAccessException | InvocationTargetException | NullPointerException x) {
-            logger.log(Level.INFO, "Could not instantiate default model: " + x.getMessage());
-        }
-
-        return null;
+    private HashMap<String, String> buildDefaultModel(String message) {
+        return new HashMap<String, String>() {{put("apiMessage", message);}};
     }
 
     private Optional<Request> getRequest(Hashtable<String, ControllerMethod> verbMethods, String route, String body) throws JsonSyntaxException {
