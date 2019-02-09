@@ -40,7 +40,26 @@ Each of annotation type, has 4 arguments that can be specified:
 
 - bodyType (All but the GET type) - specifies what is the format(Class) of the body to be parsed, default value is Object.class.
 
-## Future Improvements
+## Starting the server
+
+First select the server type that is to be used, in this case, the only one that is currently implemented is `pt.iceman.chimerium.server.SunServer`.
+Then instantiate this server and pass the needed arguments to the constructor (port where the server will run, and the list of supported controllers). 
+
+```Java
+public class Main {
+  public static void main(String... args) {
+        Controller ctrl = new UserController("/users");
+        
+        SunServer server = new SunServer(port, new ArrayList<Controller>() {{
+            add(ctrl);
+        }});
+        
+        server.start();
+    }
+}
+```
+
+# Future Improvements
 
 Support for database connection and configuration loading, as micro services should be self contained, I chose MongoDB for the first implementation, as it is quite simple to implement.
 
