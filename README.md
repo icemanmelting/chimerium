@@ -47,7 +47,7 @@ Then instantiate this server and pass the needed arguments to the constructor (p
 
 ```Java
 public class Main {
-  public static void main(String... args) {
+  public static void main(String[] args) {
         Controller ctrl = new UserController("/users");
         
         SunServer server = new SunServer(port, new ArrayList<Controller>() {{
