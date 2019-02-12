@@ -14,8 +14,6 @@ import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import static pt.iceman.chimerium.common.ClassAnalyzer.getRootClass;
-
 public class ResponseHandler {
     private static final Logger logger = Logger.getLogger(ResponseHandler.class.getName());
 
@@ -58,6 +56,16 @@ public class ResponseHandler {
             os.close();
         } catch (IOException e) {
             logger.log(Level.SEVERE, e.getMessage());
+        }
+    }
+
+    private Class getRootClass(Class<?> c) {
+        Class<?> spr = c.getSuperclass();
+
+        if (spr.equals(Object.class)) {
+            return c;
+        } else {
+            return getRootClass(spr);
         }
     }
 }

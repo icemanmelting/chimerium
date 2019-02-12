@@ -2,6 +2,7 @@ package pt.iceman.chimerium;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonSyntaxException;
+import com.mongodb.client.MongoDatabase;
 import com.sun.net.httpserver.Headers;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
@@ -10,12 +11,14 @@ import pt.iceman.chimerium.annotations.DELETE;
 import pt.iceman.chimerium.annotations.GET;
 import pt.iceman.chimerium.annotations.POST;
 import pt.iceman.chimerium.annotations.PUT;
+import pt.iceman.chimerium.config.GeneralConfig;
+import pt.iceman.chimerium.db.DataRepository;
+import pt.iceman.chimerium.db.DataRepositoryFactory;
 import pt.iceman.chimerium.response.Response;
 import pt.iceman.chimerium.response.ResponseHandler;
 
 import java.io.IOException;
 import java.io.OutputStream;
-import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
@@ -25,7 +28,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
-public abstract class Controller implements HttpHandler {
+public abstract class Controller<T> implements HttpHandler {
     private static final String POST_METHOD = "POST";
     private static final String PUT_METHOD = "PUT";
     private static final String GET_METHOD = "GET";
@@ -35,16 +38,27 @@ public abstract class Controller implements HttpHandler {
     private static final Gson gson = new Gson();
 
     @SuppressWarnings("unchecked")
-    private final ResponseHandler responseHandler;
+    private final ResponseHandler responseHandler = new ResponseHandler();
+    private final Class<T> genericClass;
 
+    private GeneralConfig config;
     private String context;
+    private MongoDatabase mongoDatabase;
     private Hashtable<String, Hashtable<String, ControllerMethod>> methods;
     private Optional<Request> requestOpt;
+    private DataRepository<T> repository;
 
-    public Controller(String context) {
+    @SuppressWarnings("unchecked")
+    public Controller(String context, GeneralConfig config) {
         this.context = context;
-        responseHandler = new ResponseHandler();
+        this.config = config;
+        this.genericClass = (Class<T>) ((ParameterizedType) getClass().getGenericSuperclass()).getActualTypeArguments()[0];
         this.methods = fillMethods();
+
+        if (config.getDbConfig() != null) {
+            DataRepositoryFactory<T> repositoryFactory = new DataRepositoryFactory<T>();
+            this.repository = repositoryFactory.getDataRepository(config.getDbConfig(), genericClass);
+        }
     }
 
     public String getContext() {
@@ -53,6 +67,10 @@ public abstract class Controller implements HttpHandler {
 
     public Optional<Request> getRequest() {
         return requestOpt;
+    }
+
+    public DataRepository<T> getRepository() {
+        return this.repository;
     }
 
     private Hashtable<String, Hashtable<String, ControllerMethod>> fillMethods() {
@@ -98,7 +116,9 @@ public abstract class Controller implements HttpHandler {
 
     @SuppressWarnings("unchecked")
     private HashMap<String, String> buildDefaultModel(String message) {
-        return new HashMap<String, String>() {{put("apiMessage", message);}};
+        return new HashMap<String, String>() {{
+            put("apiMessage", message);
+        }};
     }
 
     private Optional<Request> getRequest(Hashtable<String, ControllerMethod> verbMethods, String route, String body) throws JsonSyntaxException {

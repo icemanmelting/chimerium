@@ -1,4 +1,4 @@
-# chimerium
+# Chimerium
 A small framework for micro services creation and deployment.
 
 ## Usage
