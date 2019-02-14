@@ -1,5 +1,6 @@
 package pt.iceman.chimerium.db;
 
+import com.google.gson.Gson;
 import pt.iceman.chimerium.config.DbConfig;
 
 import java.lang.reflect.ParameterizedType;
@@ -10,22 +11,23 @@ import java.util.Optional;
 public abstract class DataRepository<T> {
     private DbConfig dbConfig;
     private Class<T> persistentClass;
+    private Gson gson;
 
     @SuppressWarnings("unchecked")
     public DataRepository(DbConfig dbConfig) {
         this.dbConfig = dbConfig;
-//        this.persistentClass = (Class<T>) ((ParameterizedType) getClass().getGenericSuperclass()).getActualTypeArguments()[0];
+        this.gson = new Gson();
     }
 
-//    public Class<T> getPersistentClass() {
-//        return persistentClass;
-//    }
+    protected synchronized Gson getGson() {
+        return this.gson;
+    }
 
-    public Optional<T> findOne(String operator, String column, Object value) {
+    public Optional<T> findOne(String queryArgs) {
         return null;
     }
 
-    public List<T> findAll() {
+    public List<T> findMany(String queryArgs) {
         return null;
     }
 
@@ -37,13 +39,9 @@ public abstract class DataRepository<T> {
         return null;
     }
 
-    public void deleteOne(String operation, String column, Object Value) {
+    public void delete(String query) {
     }
 
-    public void deleteMany(String operation, String column, Object Value) {
-    }
-
-    public T update(T t) {
-        return null;
+    public void update(String... queries) {
     }
 }

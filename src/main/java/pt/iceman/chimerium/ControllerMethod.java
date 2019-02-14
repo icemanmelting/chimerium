@@ -7,7 +7,7 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 public class ControllerMethod {
-    private Class<?> [] argumentsTypes;
+    private Class<?>[] argumentsTypes;
     private Class<?> bodyType;
     private List<Object> args;
     private Method method;
@@ -35,13 +35,13 @@ public class ControllerMethod {
         return method;
     }
 
-    public List<Object> getArgs(List<String> routeValues) {
+    public List<Object> getArgs(List<String> routeValues) throws NumberFormatException, IllegalArgumentException {
         return IntStream.range(0, routeValues.size())
                         .mapToObj(i -> castArgument(routeValues.get(i), this.argumentsTypes[i]))
                         .collect(Collectors.toList());
     }
 
-    private Object castArgument(String arg, Class type) {
+    private Object castArgument(String arg, Class type) throws NumberFormatException, IllegalArgumentException {
         Object o = null;
 
         switch (type.getName()) {

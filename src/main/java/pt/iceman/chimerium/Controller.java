@@ -2,7 +2,6 @@ package pt.iceman.chimerium;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonSyntaxException;
-import com.mongodb.client.MongoDatabase;
 import com.sun.net.httpserver.Headers;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
@@ -43,9 +42,7 @@ public abstract class Controller<T> implements HttpHandler {
 
     private GeneralConfig config;
     private String context;
-    private MongoDatabase mongoDatabase;
     private Hashtable<String, Hashtable<String, ControllerMethod>> methods;
-    private Optional<Request> requestOpt;
     private DataRepository<T> repository;
 
     @SuppressWarnings("unchecked")
@@ -65,9 +62,6 @@ public abstract class Controller<T> implements HttpHandler {
         return context;
     }
 
-    public Optional<Request> getRequest() {
-        return requestOpt;
-    }
 
     public DataRepository<T> getRepository() {
         return this.repository;
@@ -121,7 +115,7 @@ public abstract class Controller<T> implements HttpHandler {
         }};
     }
 
-    private Optional<Request> getRequest(Hashtable<String, ControllerMethod> verbMethods, String route, String body) throws JsonSyntaxException {
+    private Optional<Request> getRequest(Hashtable<String, ControllerMethod> verbMethods, String route, String body) throws NumberFormatException, IllegalArgumentException, JsonSyntaxException {
         List<String> routeArguments = Arrays.stream(route.split("/")).collect(Collectors.toList());
         routeArguments.remove("");
 
@@ -176,21 +170,24 @@ public abstract class Controller<T> implements HttpHandler {
             logger.log(Level.WARNING, "Couldn't parse body. Is it available?" + e.getMessage());
         }
 
-        this.requestOpt = getRequest(methods.get(verb), route, body);
-
         Response r = null;
 
-        if (this.requestOpt.isPresent()) {
-            try {
-                Request request = this.requestOpt.get();
+        try {
+            Optional<Request> requestOpt = getRequest(methods.get(verb), route, body);
 
-                r = (Response) request.getMethod().invoke(this, request.getArgs().toArray());
+            if (requestOpt.isPresent()) {
 
-            } catch (IllegalArgumentException | IllegalAccessException | InvocationTargetException e) {
-                r = new Response(500, buildDefaultModel(e.getMessage()));
+                Request request = requestOpt.get();
+
+                List<Object> args = new ArrayList<>(request.getArgs());
+                args.add(0, request);
+
+                r = (Response) request.getMethod().invoke(this, args.toArray());
+            } else {
+                r = new Response(404, buildDefaultModel("No Route Found"));
             }
-        } else {
-            r = new Response(404, buildDefaultModel("No Route Found"));
+        } catch (IllegalArgumentException | IllegalAccessException | InvocationTargetException e) {
+            r = new Response(500, buildDefaultModel(e.getLocalizedMessage()));
         }
 
         responseHandler.handleResponse(httpExchange, r);

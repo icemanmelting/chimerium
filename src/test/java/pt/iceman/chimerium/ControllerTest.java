@@ -23,6 +23,7 @@ import static org.junit.Assert.assertEquals;
 public class ControllerTest {
     private Gson gson = new Gson();
     private User user1 = new User("Fabio", "Francisco");
+    private User user3 = new User("Fabio", "Dias");
     private User user2 = new User("Carlos", "Monteiro");
     private String configFromResource = IOUtils.toString(ControllerTest.class.getResourceAsStream("/config.json"), "UTF-8");
     private GeneralConfig config = gson.fromJson(configFromResource, GeneralConfig.class);
@@ -59,6 +60,21 @@ public class ControllerTest {
 
         assertEquals(user1.getName(), user.getName());
         assertEquals(user1.getLastName(), user.getLastName());
+    }
+
+    @Test
+    public void testGetWorngArgumentFormat() throws IOException {
+        HttpUriRequest request = new HttpGet("http://localhost:" + config.getPort() + "/users/whatever/asd");
+
+        CloseableHttpResponse response = HttpClientBuilder.create().build().execute(request);
+
+        int statusCode = response.getStatusLine().getStatusCode();
+
+        assertEquals(500, statusCode);
+
+        String body = IOUtils.toString(response.getEntity().getContent(), "UTF-8");
+
+        assertEquals("{\"apiMessage\":\"For input string: \\\"asd\\\"\"}", body);
     }
 
     @Test

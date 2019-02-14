@@ -19,18 +19,13 @@ public class UserController extends Controller<User> {
     }
 
     @GET(route = "/users/:id/:age", args = {String.class, Integer.class}, description = "")
-    public Response get(String id, Integer v) {
-
+    public Response get(Request request, String id, Integer v) {
         return new Response(200, user1);
     }
 
     @POST(route = "/users/:id", args = String.class, description = "", bodyType = User.class)
-    public Response post(String id) {
-
-        Request r = (Request) getRequest().get();
-
-        repository.insertOne((User) r.getBody());
-
+    public Response post(Request request, String id) {
+        System.out.println("");
         return new Response(200, user1);
     }
 }

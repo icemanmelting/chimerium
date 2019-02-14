@@ -1,10 +1,12 @@
 package pt.iceman.chimerium.db;
 
+import com.mongodb.BasicDBObject;
 import com.mongodb.MongoClientSettings;
+import com.mongodb.client.FindIterable;
 import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
-import com.mongodb.client.model.Filters;
+import com.mongodb.client.model.UpdateOptions;
 import org.bson.codecs.configuration.CodecRegistry;
 import org.bson.codecs.pojo.PojoCodecProvider;
 import pt.iceman.chimerium.config.DbConfig;
@@ -32,40 +34,36 @@ public class MongoDBRepository<T> extends DataRepository<T> {
         this.collection = mongoDatabase.getCollection(genericClass.getSimpleName(), genericClass);
     }
 
-    private Optional<T> convertFind(String operation, String column, Object value) {
-        T t = null;
-
-        switch (operation) {
-            case "=":
-                t = this.collection.find(Filters.eq(column, value)).first();
-                break;
-            case ">":
-                t = this.collection.find(Filters.gt(column, value)).first();
-                break;
-            case ">=":
-                t = this.collection.find(Filters.gte(column, value)).first();
-                break;
-            case "<":
-                t = this.collection.find(Filters.lt(column, value)).first();
-                break;
-            case "<=":
-                t = this.collection.find(Filters.lte(column, value)).first();
-                break;
+    private FindIterable<T> queryMongo(BasicDBObject bson) {
+        if (bson != null) {
+            return this.collection.find(bson);
+        } else {
+            return this.collection.find();
         }
+    }
 
-        return Optional.ofNullable(t);
+    private void executeMongo(DbOperation operation, BasicDBObject... bson) {
+        if (operation.equals(DbOperation.UPDATE)) {
+            this.collection.updateOne(bson[0], bson[1], new UpdateOptions().upsert(true));
+        } else if (operation.equals(DbOperation.DELETE)) {
+            this.collection.deleteMany(bson[0]);
+        }
+    }
+
+
+    @Override
+    public Optional<T> findOne(String query) {
+        BasicDBObject bson = getGson().fromJson(query, BasicDBObject.class);
+        return Optional.ofNullable(queryMongo(bson).first());
     }
 
     @Override
-    public Optional<T> findOne(String operation, String column, Object value) {
-        return convertFind(operation, column, value);
-    }
+    public List<T> findMany(String query) {
+        BasicDBObject bson = getGson().fromJson(query, BasicDBObject.class);
 
-    @Override
-    public List<T> findAll() {
         List<T> ts = new ArrayList<>();
 
-        this.collection.find().forEach(new Consumer<T>() {
+        this.queryMongo(bson).forEach(new Consumer<T>() {
             @Override
             public void accept(T t) {
                 ts.add(t);
@@ -87,58 +85,21 @@ public class MongoDBRepository<T> extends DataRepository<T> {
         return ts;
     }
 
-    private void convertDeleteOne(String operation, String column, Object value) {
-        switch (operation) {
-            case "=":
-                this.collection.deleteOne(Filters.eq(column, value));
-                break;
-            case ">":
-                this.collection.deleteOne(Filters.gt(column, value));
-                break;
-            case ">=":
-                this.collection.deleteOne(Filters.gte(column, value));
-                break;
-            case "<":
-                this.collection.deleteOne(Filters.lt(column, value));
-                break;
-            case "<=":
-                this.collection.deleteOne(Filters.lte(column, value));
-                break;
+
+    @Override
+    public void delete(String query) {
+        BasicDBObject bson = getGson().fromJson(query, BasicDBObject.class);
+        executeMongo(DbOperation.DELETE, bson);
+    }
+
+
+    @Override
+    public void update(String... queries) {
+        if (queries.length == 2) {
+            BasicDBObject bson = getGson().fromJson(queries[0], BasicDBObject.class);
+            BasicDBObject bson1 = getGson().fromJson("{$set:"+queries[1]+"}", BasicDBObject.class);
+
+            executeMongo(DbOperation.UPDATE, bson, bson1);
         }
-    }
-
-    @Override
-    public void deleteOne(String operation, String column, Object value) {
-        convertDeleteOne(operation, column, value);
-    }
-
-    private void convertDeleteMany(String operation, String column, Object value) {
-        switch (operation) {
-            case "=":
-                this.collection.deleteMany(Filters.eq(column, value));
-                break;
-            case ">":
-                this.collection.deleteMany(Filters.gt(column, value));
-                break;
-            case ">=":
-                this.collection.deleteMany(Filters.gte(column, value));
-                break;
-            case "<":
-                this.collection.deleteMany(Filters.lt(column, value));
-                break;
-            case "<=":
-                this.collection.deleteMany(Filters.lte(column, value));
-                break;
-        }
-    }
-
-    @Override
-    public void deleteMany(String operation, String column, Object value) {
-     convertDeleteMany(operation, column, value);
-    }
-
-    @Override
-    public T update(T t) {
-        return super.update(t);
     }
 }

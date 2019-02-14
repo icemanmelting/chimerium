@@ -8,6 +8,13 @@ public class DbConfig {
     private String password;
     private String db;
 
+    public DbConfig(String host, int port, String type, String db) {
+        this.host = host;
+        this.port = port;
+        this.type = type;
+        this.db = db;
+    }
+
     public DbConfig() {
     }
 
