@@ -1,7 +1,6 @@
 package pt.iceman.chimerium.handler;
 
 import com.google.gson.JsonSyntaxException;
-import pt.iceman.chimerium.request.body.GsonParser;
 import pt.iceman.chimerium.annotations.DELETE;
 import pt.iceman.chimerium.annotations.GET;
 import pt.iceman.chimerium.annotations.POST;
@@ -10,6 +9,7 @@ import pt.iceman.chimerium.config.GeneralConfig;
 import pt.iceman.chimerium.db.DataRepository;
 import pt.iceman.chimerium.db.DataRepositoryFactory;
 import pt.iceman.chimerium.request.Request;
+import pt.iceman.chimerium.request.body.GsonParser;
 import pt.iceman.chimerium.response.Response;
 
 import java.lang.reflect.InvocationTargetException;
@@ -103,6 +103,34 @@ public abstract class Controller<T> implements IHandler {
         }};
     }
 
+    private Request processVerbMethods(Request request, List<String> routeArguments, Map.Entry<String, ControllerMethod> e) {
+        String r = e.getKey();
+        ControllerMethod cm = e.getValue();
+        Class<?>[] argTypes = cm.getArgumentsTypes();
+        Method method = cm.getMethod();
+
+        List<String> route2 = Arrays.stream(e.getKey().split("/")).collect(Collectors.toList());
+        route2.remove("");
+
+        List<String> baseValues = route2.stream().filter(s -> !s.startsWith(":")).collect(Collectors.toList());
+
+        if ((routeArguments.size() == route2.size() && routeArguments.containsAll(baseValues))) {
+            routeArguments.removeAll(baseValues);
+            request.setArgs(cm.getArgs(routeArguments));
+            request.setMethod(method);
+
+            String body = request.getBody();
+
+            if (!body.isEmpty()) {
+                request.setBodyObject(GsonParser.getGsonInstance().fromJson(body, cm.getBodyType()));
+            }
+
+            return request;
+        } else {
+            return null;
+        }
+    }
+
     private Optional<Request> enrichRequest(Request request) throws NumberFormatException, IllegalArgumentException, JsonSyntaxException {
         List<String> routeArguments = Arrays.stream(request.getRoute().split("/")).collect(Collectors.toList());
         routeArguments.remove("");
@@ -111,33 +139,7 @@ public abstract class Controller<T> implements IHandler {
 
         List<Request> reqs = verbMethods.entrySet()
                                         .stream()
-                                        .map(e -> {
-                                            String r = e.getKey();
-                                            ControllerMethod cm = e.getValue();
-                                            Class<?>[] argTypes = cm.getArgumentsTypes();
-                                            Method method = cm.getMethod();
-
-                                            List<String> route2 = Arrays.stream(e.getKey().split("/")).collect(Collectors.toList());
-                                            route2.remove("");
-
-                                            List<String> baseValues = route2.stream().filter(s -> !s.startsWith(":")).collect(Collectors.toList());
-
-                                            if ((routeArguments.size() == route2.size() && routeArguments.containsAll(baseValues))) {
-                                                routeArguments.removeAll(baseValues);
-                                                request.setArgs(cm.getArgs(routeArguments));
-                                                request.setMethod(method);
-
-                                                String body = request.getBody();
-
-                                                if (!body.isEmpty()) {
-                                                    request.setBodyObject(GsonParser.getGsonInstance().fromJson(body, cm.getBodyType()));
-                                                }
-
-                                                return request;
-                                            } else {
-                                                return null;
-                                            }
-                                        })
+                                        .map(e -> processVerbMethods(request, routeArguments, e))
                                         .filter(Objects::nonNull)
                                         .collect(Collectors.toList());
 
