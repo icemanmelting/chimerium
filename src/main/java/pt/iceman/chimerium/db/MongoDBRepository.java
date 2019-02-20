@@ -10,6 +10,7 @@ import com.mongodb.client.model.UpdateOptions;
 import org.bson.codecs.configuration.CodecRegistry;
 import org.bson.codecs.pojo.PojoCodecProvider;
 import pt.iceman.chimerium.config.DbConfig;
+import pt.iceman.chimerium.request.body.GsonParser;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -53,13 +54,13 @@ public class MongoDBRepository<T> extends DataRepository<T> {
 
     @Override
     public Optional<T> findOne(String query) {
-        BasicDBObject bson = getGson().fromJson(query, BasicDBObject.class);
+        BasicDBObject bson = GsonParser.getGsonInstance().fromJson(query, BasicDBObject.class);
         return Optional.ofNullable(queryMongo(bson).first());
     }
 
     @Override
     public List<T> findMany(String query) {
-        BasicDBObject bson = getGson().fromJson(query, BasicDBObject.class);
+        BasicDBObject bson =GsonParser.getGsonInstance().fromJson(query, BasicDBObject.class);
 
         List<T> ts = new ArrayList<>();
 
@@ -88,7 +89,7 @@ public class MongoDBRepository<T> extends DataRepository<T> {
 
     @Override
     public void delete(String query) {
-        BasicDBObject bson = getGson().fromJson(query, BasicDBObject.class);
+        BasicDBObject bson = GsonParser.getGsonInstance().fromJson(query, BasicDBObject.class);
         executeMongo(DbOperation.DELETE, bson);
     }
 
@@ -96,8 +97,8 @@ public class MongoDBRepository<T> extends DataRepository<T> {
     @Override
     public void update(String... queries) {
         if (queries.length == 2) {
-            BasicDBObject bson = getGson().fromJson(queries[0], BasicDBObject.class);
-            BasicDBObject bson1 = getGson().fromJson("{$set:"+queries[1]+"}", BasicDBObject.class);
+            BasicDBObject bson = GsonParser.getGsonInstance().fromJson(queries[0], BasicDBObject.class);
+            BasicDBObject bson1 = GsonParser.getGsonInstance().fromJson("{$set:"+queries[1]+"}", BasicDBObject.class);
 
             executeMongo(DbOperation.UPDATE, bson, bson1);
         }

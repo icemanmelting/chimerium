@@ -10,6 +10,8 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import pt.iceman.chimerium.config.GeneralConfig;
+import pt.iceman.chimerium.handler.Controller;
+import pt.iceman.chimerium.handler.SunServerHandler;
 import pt.iceman.chimerium.server.SunServer;
 import pt.iceman.chimerium.testentitites.User;
 import pt.iceman.chimerium.testentitites.UserController;
@@ -27,8 +29,8 @@ public class ControllerTest {
     private User user2 = new User("Carlos", "Monteiro");
     private String configFromResource = IOUtils.toString(ControllerTest.class.getResourceAsStream("/config.json"), "UTF-8");
     private GeneralConfig config = gson.fromJson(configFromResource, GeneralConfig.class);
-    private Controller ctrl = new UserController("/users", config);
-    private SunServer server = new SunServer(config.getPort(), new ArrayList<Controller>() {{
+    private SunServerHandler ctrl = new UserController("/users", config);
+    private SunServer server = new SunServer(config.getPort(), new ArrayList<SunServerHandler>() {{
         add(ctrl);
     }});
 

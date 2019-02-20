@@ -1,11 +1,7 @@
-package pt.iceman.chimerium;
+package pt.iceman.chimerium.handler;
 
-import com.google.gson.Gson;
 import com.google.gson.JsonSyntaxException;
-import com.sun.net.httpserver.Headers;
-import com.sun.net.httpserver.HttpExchange;
-import com.sun.net.httpserver.HttpHandler;
-import org.apache.commons.io.IOUtils;
+import pt.iceman.chimerium.request.body.GsonParser;
 import pt.iceman.chimerium.annotations.DELETE;
 import pt.iceman.chimerium.annotations.GET;
 import pt.iceman.chimerium.annotations.POST;
@@ -13,31 +9,24 @@ import pt.iceman.chimerium.annotations.PUT;
 import pt.iceman.chimerium.config.GeneralConfig;
 import pt.iceman.chimerium.db.DataRepository;
 import pt.iceman.chimerium.db.DataRepositoryFactory;
+import pt.iceman.chimerium.request.Request;
 import pt.iceman.chimerium.response.Response;
-import pt.iceman.chimerium.response.ResponseHandler;
 
-import java.io.IOException;
-import java.io.OutputStream;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
-import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
-public abstract class Controller<T> implements HttpHandler {
+public abstract class Controller<T> implements IHandler {
     private static final String POST_METHOD = "POST";
     private static final String PUT_METHOD = "PUT";
     private static final String GET_METHOD = "GET";
     private static final String DELETE_METHOD = "DELETE";
     private static final String OPTIONS_METHOD = "OPTIONS";
-    private static final Logger logger = Logger.getLogger(Controller.class.getName());
-    private static final Gson gson = new Gson();
-
-    @SuppressWarnings("unchecked")
-    private final ResponseHandler responseHandler = new ResponseHandler();
+    private static final Logger logger = Logger.getLogger(pt.iceman.chimerium.handler.Controller.class.getName());
     private final Class<T> genericClass;
 
     private GeneralConfig config;
@@ -45,8 +34,8 @@ public abstract class Controller<T> implements HttpHandler {
     private Hashtable<String, Hashtable<String, ControllerMethod>> methods;
     private DataRepository<T> repository;
 
-    @SuppressWarnings("unchecked")
     public Controller(String context, GeneralConfig config) {
+        this.methods = fillMethods();
         this.context = context;
         this.config = config;
         this.genericClass = (Class<T>) ((ParameterizedType) getClass().getGenericSuperclass()).getActualTypeArguments()[0];
@@ -61,7 +50,6 @@ public abstract class Controller<T> implements HttpHandler {
     public String getContext() {
         return context;
     }
-
 
     public DataRepository<T> getRepository() {
         return this.repository;
@@ -115,9 +103,11 @@ public abstract class Controller<T> implements HttpHandler {
         }};
     }
 
-    private Optional<Request> getRequest(Hashtable<String, ControllerMethod> verbMethods, String route, String body) throws NumberFormatException, IllegalArgumentException, JsonSyntaxException {
-        List<String> routeArguments = Arrays.stream(route.split("/")).collect(Collectors.toList());
+    private Optional<Request> enrichRequest(Request request) throws NumberFormatException, IllegalArgumentException, JsonSyntaxException {
+        List<String> routeArguments = Arrays.stream(request.getRoute().split("/")).collect(Collectors.toList());
         routeArguments.remove("");
+
+        Hashtable<String, ControllerMethod> verbMethods = this.methods.get(request.getVerb());
 
         List<Request> reqs = verbMethods.entrySet()
                                         .stream()
@@ -134,13 +124,16 @@ public abstract class Controller<T> implements HttpHandler {
 
                                             if ((routeArguments.size() == route2.size() && routeArguments.containsAll(baseValues))) {
                                                 routeArguments.removeAll(baseValues);
-                                                Request req = new Request(cm.getArgs(routeArguments), method);
+                                                request.setArgs(cm.getArgs(routeArguments));
+                                                request.setMethod(method);
+
+                                                String body = request.getBody();
 
                                                 if (!body.isEmpty()) {
-                                                    req.setBody(gson.fromJson(body, cm.getBodyType()));
+                                                    request.setBodyObject(GsonParser.getGsonInstance().fromJson(body, cm.getBodyType()));
                                                 }
 
-                                                return req;
+                                                return request;
                                             } else {
                                                 return null;
                                             }
@@ -151,33 +144,21 @@ public abstract class Controller<T> implements HttpHandler {
         return !reqs.isEmpty() ? Optional.of(reqs.get(0)) : Optional.empty();
     }
 
-    @SuppressWarnings("unchecked")
-    public void handle(HttpExchange httpExchange) {
-        String verb = httpExchange.getRequestMethod();
-
-        if (verb.equals(OPTIONS_METHOD)) {
-            handleOptionsRequest(httpExchange);
+    @Override
+    public void handleRequest(Request request) {
+        if (request.getVerb().equals(OPTIONS_METHOD)) {
+            handleOptionsRequest(request);
             return;
-        }
-
-        String route = httpExchange.getRequestURI().getPath();
-
-        String body = null;
-
-        try {
-            body = IOUtils.toString(httpExchange.getRequestBody(), "UTF-8");
-        } catch (IOException e) {
-            logger.log(Level.WARNING, "Couldn't parse body. Is it available?" + e.getMessage());
         }
 
         Response r = null;
 
         try {
-            Optional<Request> requestOpt = getRequest(methods.get(verb), route, body);
+            Optional<Request> requestOpt = enrichRequest(request);
 
             if (requestOpt.isPresent()) {
 
-                Request request = requestOpt.get();
+                request = requestOpt.get();
 
                 List<Object> args = new ArrayList<>(request.getArgs());
                 args.add(0, request);
@@ -190,35 +171,12 @@ public abstract class Controller<T> implements HttpHandler {
             r = new Response(500, buildDefaultModel(e.getLocalizedMessage()));
         }
 
-        responseHandler.handleResponse(httpExchange, r);
+        request.respond(r);
     }
 
-    private void handleOptionsRequest(HttpExchange httpExchange) {
-        Headers headers = (Headers) httpExchange.getRequestHeaders();
-        List<String> origins = headers.get("Origin");
-
-        String origin = (origins != null && !origins.isEmpty()) ? origins.get(0) : "*";
-
-        List<String> accessControlMethods = headers.get("Access-Control-Request-Method");
-
-        String accessControl = (accessControlMethods != null && !accessControlMethods.isEmpty()) ? accessControlMethods.get(0) : "GET,HEAD,PUT,POST,DELETE,OPTIONS";
-
-        Headers responseHeaders = httpExchange.getResponseHeaders();
-
-        responseHeaders.set("Access-Control-Allow-Origin", origin);
-        responseHeaders.set("Access-Control-Allow-Methods", accessControl);
-        responseHeaders.set("Access-Control-Allow-Headers", "X-Requested-With");
-        responseHeaders.set("Access-Control-Allow-Credentials", "true");
-        responseHeaders.set("Content-Type", String.format("text/plain; charset=%s", StandardCharsets.UTF_8));
-
-        try {
-            httpExchange.sendResponseHeaders(200, "".getBytes().length);
-            OutputStream os = httpExchange.getResponseBody();
-
-            os.write("".getBytes());
-            os.close();
-        } catch (IOException e) {
-            logger.log(Level.SEVERE, e.getMessage());
-        }
+    @Override
+    public void handleOptionsRequest(Request request) {
+        Response response = new Response(200, null);
+        request.respond(response);
     }
 }

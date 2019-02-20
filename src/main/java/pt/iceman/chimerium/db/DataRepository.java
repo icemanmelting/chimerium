@@ -3,24 +3,16 @@ package pt.iceman.chimerium.db;
 import com.google.gson.Gson;
 import pt.iceman.chimerium.config.DbConfig;
 
-import java.lang.reflect.ParameterizedType;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Optional;
 
 public abstract class DataRepository<T> {
     private DbConfig dbConfig;
     private Class<T> persistentClass;
-    private Gson gson;
 
     @SuppressWarnings("unchecked")
     public DataRepository(DbConfig dbConfig) {
         this.dbConfig = dbConfig;
-        this.gson = new Gson();
-    }
-
-    protected synchronized Gson getGson() {
-        return this.gson;
     }
 
     public Optional<T> findOne(String queryArgs) {
@@ -31,17 +23,24 @@ public abstract class DataRepository<T> {
         return null;
     }
 
-    public T insertOne(T t) {
+    public synchronized T insertOne(T t) {
         return null;
     }
 
-    public List<T> insertMany(List<T> ts) {
+    public synchronized List<T> insertMany(List<T> ts) {
         return null;
     }
 
-    public void delete(String query) {
+    public synchronized void delete(String query) {
     }
 
-    public void update(String... queries) {
+    public synchronized void update(String... queries) {
+    }
+
+    public synchronized void execute(String query) {
+    }
+
+    public synchronized List<T> query(String query) {
+        return null;
     }
 }

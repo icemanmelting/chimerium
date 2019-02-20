@@ -1,8 +1,9 @@
-package pt.iceman.chimerium.response;
+package pt.iceman.chimerium.request;
 
-import com.google.gson.Gson;
 import com.sun.net.httpserver.Headers;
 import com.sun.net.httpserver.HttpExchange;
+import pt.iceman.chimerium.request.body.GsonParser;
+import pt.iceman.chimerium.response.Response;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -12,25 +13,24 @@ import java.util.AbstractMap;
 import java.util.List;
 import java.util.Map;
 import java.util.logging.Level;
-import java.util.logging.Logger;
 
-public class ResponseHandler {
-    private static final Logger logger = Logger.getLogger(ResponseHandler.class.getName());
+public class SunRequest extends Request {
+    private HttpExchange httpExchange;
 
-    private Gson gson;
-
-    public ResponseHandler() {
-        this.gson = new Gson();
+    public SunRequest(HttpExchange httpExchange, Map<String, List<String>> requestHeaders, String body, String route, String verb) {
+        super(requestHeaders, body, route, verb);
+        this.httpExchange = httpExchange;
     }
 
-    public void handleResponse(HttpExchange httpExchange, Response response) {
+    @Override
+    public void respond(Response response) {
         Headers headers = (Headers) httpExchange.getResponseHeaders();
 
         Object result = response.getResult();
 
         Class<?> baseType = getRootClass(result.getClass());
 
-        String body = (baseType.isAssignableFrom(AbstractCollection.class) || baseType.isAssignableFrom(AbstractMap.class)) ? gson.toJson(result, baseType) : gson.toJson(result).toString();
+        String body = (baseType.isAssignableFrom(AbstractCollection.class) || baseType.isAssignableFrom(AbstractMap.class)) ? GsonParser.getGsonInstance().toJson(result, baseType) : GsonParser.getGsonInstance().toJson(result).toString();
 
         List<String> origins = httpExchange.getRequestHeaders().get("Origin");
 
@@ -42,7 +42,12 @@ public class ResponseHandler {
             addedHeaders.forEach(headers::set);
         }
 
+        List<String> accessControlMethods = headers.get("Access-Control-RoughRequest-Method");
+
+        String accessControl = (accessControlMethods != null && !accessControlMethods.isEmpty()) ? accessControlMethods.get(0) : "GET,HEAD,PUT,POST,DELETE,OPTIONS";
+
         headers.set("Access-Control-Allow-Origin", origin);
+        headers.set("Access-Control-Allow-Methods", accessControl);
         headers.set("Access-Control-Allow-Headers", "X-Requested-With");
         headers.set("Access-Control-Allow-Methods", "GET,HEAD,PUT,POST,DELETE,OPTIONS");
         headers.set("Access-Control-Allow-Credentials", "true");
@@ -56,16 +61,6 @@ public class ResponseHandler {
             os.close();
         } catch (IOException e) {
             logger.log(Level.SEVERE, e.getMessage());
-        }
-    }
-
-    private Class getRootClass(Class<?> c) {
-        Class<?> spr = c.getSuperclass();
-
-        if (spr.equals(Object.class)) {
-            return c;
-        } else {
-            return getRootClass(spr);
         }
     }
 }
