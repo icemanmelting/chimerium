@@ -1,6 +1,7 @@
 package pt.iceman.chimerium;
 
 import com.google.gson.Gson;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import pt.iceman.chimerium.config.DbConfig;
@@ -9,6 +10,7 @@ import pt.iceman.chimerium.db.DataRepositoryFactory;
 import pt.iceman.chimerium.testentitites.User;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.Optional;
 
 import static junit.framework.TestCase.assertTrue;
@@ -27,8 +29,9 @@ public class MongoRepositoryTest {
     }
 
     @Before
-    public void setup() {
-        repository.delete(gson.toJson(user));
+    public void clearDB() {
+        System.out.println("Clearing DB");
+        repository.delete("{ name: \"Fabio\"}");
     }
 
     @Test
@@ -95,5 +98,13 @@ public class MongoRepositoryTest {
         userQueriedOpt = repository.findOne(gson.toJson(user));
 
         assertFalse(userQueriedOpt.isPresent());
+    }
+
+    @Test
+    public void testGenericQuery() {
+        repository.insertOne(user);
+        List<User> users = repository.findMany("{ name: \"Fabio\"}");
+
+        assertEquals(1, users.size());
     }
 }

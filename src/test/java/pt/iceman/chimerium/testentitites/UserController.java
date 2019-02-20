@@ -1,15 +1,15 @@
 package pt.iceman.chimerium.testentitites;
 
-import pt.iceman.chimerium.Controller;
-import pt.iceman.chimerium.ControllerTest;
-import pt.iceman.chimerium.Request;
+import pt.iceman.chimerium.handler.Controller;
+import pt.iceman.chimerium.handler.SunServerHandler;
+import pt.iceman.chimerium.request.Request;
 import pt.iceman.chimerium.annotations.GET;
 import pt.iceman.chimerium.annotations.POST;
 import pt.iceman.chimerium.config.GeneralConfig;
 import pt.iceman.chimerium.db.DataRepository;
 import pt.iceman.chimerium.response.Response;
 
-public class UserController extends Controller<User> {
+public class UserController extends SunServerHandler<User> {
     private DataRepository<User> repository = getRepository();
     private User user1 = new User("Fabio", "Francisco");
     private User user2 = new User("Carlos", "Monteiro");

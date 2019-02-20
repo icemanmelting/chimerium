@@ -1,4 +1,4 @@
-package pt.iceman.chimerium;
+package pt.iceman.chimerium.handler;
 
 import java.lang.reflect.Method;
 import java.util.List;
